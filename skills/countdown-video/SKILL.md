@@ -44,6 +44,8 @@ Setup: `pip install playwright soundfile scipy pillow --break-system-packages` a
 
 ## `items.json` schema
 
+The values below are placeholders that show the shape, not real data.
+
 ```json
 {
   "title": "Top 5 Highest-Grossing Stop-Motion Movies",
@@ -63,7 +65,7 @@ Setup: `pip install playwright soundfile scipy pillow --break-system-packages` a
       "image": "posters/chicken-run.jpg",
       "stats": [{"label": "Budget", "value": 45000000}, {"label": "Box Office", "value": 225100000}],
       "multiple": "5x its budget",
-      "ratings": {"imdb": 7.1, "rt": 96, "rt_audience": 60, "metacritic": 88},
+      "ratings": {"imdb": 7.0, "rt": 90, "rt_audience": 75, "metacritic": 80},
       "fact": "One short, sourced sentence.",
       "teaser": "optional line under the No.X slam",
       "clip": {"file": "clips/chicken-run-trailer.mp4", "start": "0:12", "duration": 25},
