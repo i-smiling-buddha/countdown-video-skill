@@ -1,0 +1,27 @@
+{
+  "title": "Top 5 Highest-Grossing Stop-Motion Movies",
+  "subtitle": "Ranked by worldwide box office",
+  "channel": "Movies Ocean",
+  "currency": "$",
+  "outro_title": "Which one is your favourite?",
+  "outro_subtitle": "Tell us in the comments!",
+  "items": [
+    {"rank": 1, "title": "Chicken Run", "year": 2000, "subtitle": "Family/Comedy", "image": "posters/chicken-run.jpg",
+     "stats": [{"label": "Budget", "value": 45000000}, {"label": "Box Office", "value": 225100000}],
+     "multiple": "5x its budget",
+     "fact": "It is the highest-grossing stop-motion animated film ever made.",
+     "sources": ["https://www.boxofficemojo.com/title/tt0120630/"]},
+    {"rank": 2, "title": "Wallace & Gromit: The Curse of the Were-Rabbit", "year": 2005, "subtitle": "Family/Adventure", "image": "posters/were-rabbit.jpg",
+     "stats": [{"label": "Budget", "value": 30000000}, {"label": "Box Office", "value": 192600000}],
+     "multiple": "6.4x its budget"},
+    {"rank": 3, "title": "Coraline", "year": 2009, "subtitle": "Horror/Fantasy", "image": "posters/coraline.jpg",
+     "stats": [{"label": "Budget", "value": 60000000}, {"label": "Box Office", "value": 124600000}],
+     "ratings": {"imdb": 7.7, "rt": 90, "rt_audience": 73, "metacritic": 80}},
+    {"rank": 4, "title": "Corpse Bride", "year": 2005, "subtitle": "Fantasy/Musical", "image": "posters/corpse-bride.jpg",
+     "stats": [{"label": "Budget", "value": 40000000}, {"label": "Box Office", "value": 118100000}],
+     "ratings": {"imdb": 7.4, "rt": 84, "rt_audience": 77}},
+    {"rank": 5, "title": "The Boxtrolls", "year": 2014, "subtitle": "Family/Comedy", "image": "posters/boxtrolls.jpg",
+     "stats": [{"label": "Budget", "value": 60000000}, {"label": "Box Office", "value": 108300000}],
+     "ratings": {"imdb": 6.8, "rt": 78, "rt_audience": 63, "metacritic": 61}}
+  ]
+}

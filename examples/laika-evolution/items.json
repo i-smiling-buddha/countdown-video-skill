@@ -1,0 +1,64 @@
+{
+  "mode": "timeline",
+  "title": "LAIKA Animation Evolution",
+  "subtitle": "Every film, year by year",
+  "channel": "Movies Ocean",
+  "outro_title": "Plz Like, Comment, Share and Subscribe",
+  "outro_subtitle": "Which LAIKA film is your favourite?",
+  "items": [
+    {
+      "title": "Coraline",
+      "year": 2009,
+      "subtitle": "Horror/Fantasy",
+      "stats": [
+        {
+          "label": "Budget",
+          "value": 60000000
+        },
+        {
+          "label": "Box Office",
+          "value": 124600000
+        }
+      ],
+      "ratings": {
+        "imdb": 7.7,
+        "rt": 90,
+        "rt_audience": 73,
+        "metacritic": 80
+      },
+      "clip": {
+        "file": "clips/coraline-trailer.mp4",
+        "start": "0:02",
+        "duration": 25
+      },
+      "image": "posters/coraline.jpg"
+    },
+    {
+      "title": "Corpse Bride",
+      "year": 2005,
+      "subtitle": "Fantasy/Musical",
+      "stats": [
+        {
+          "label": "Budget",
+          "value": 40000000
+        },
+        {
+          "label": "Box Office",
+          "value": 118100000
+        }
+      ],
+      "ratings": {
+        "imdb": 7.3,
+        "rt": 84,
+        "rt_audience": 77
+      },
+      "clip": {
+        "file": "clips/corpse-bride-trailer.mp4",
+        "start": 1,
+        "duration": 25
+      },
+      "image": "posters/corpse-bride.jpg"
+    }
+  ],
+  "intro_image": "logo.png"
+}

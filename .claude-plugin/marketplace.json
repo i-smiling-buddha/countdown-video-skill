@@ -1,0 +1,13 @@
+{
+  "name": "countdown-video-skill",
+  "owner": { "name": "Smiling Buddha", "url": "https://desitechnology.com" },
+  "plugins": [
+    {
+      "name": "countdown-video-skill",
+      "source": "./",
+      "description": "Top-N countdown and evolution videos with rank/year reveals, trailer clips, music, SFX and YouTube chapters.",
+      "version": "1.0.0",
+      "license": "MIT"
+    }
+  ]
+}

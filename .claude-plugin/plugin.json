@@ -1,0 +1,10 @@
+{
+  "name": "countdown-video-skill",
+  "version": "1.0.0",
+  "description": "Make Top-N countdown and year-by-year evolution videos (movies, box office, ratings or any ranked list) with rank/year reveals, optional trailer clips, music, SFX and YouTube chapters.",
+  "author": { "name": "Smiling Buddha", "url": "https://desitechnology.com" },
+  "homepage": "https://github.com/i-smiling-buddha/countdown-video-skill",
+  "repository": "https://github.com/i-smiling-buddha/countdown-video-skill",
+  "license": "MIT",
+  "keywords": ["countdown", "top-10", "list-video", "youtube", "movies", "box-office", "video-generation", "agent-skills"]
+}

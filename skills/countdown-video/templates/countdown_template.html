@@ -1,0 +1,189 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:#222}
+text{font-family:Poppins,'Arial Black',sans-serif;font-weight:700}
+</style></head><body>
+<svg id="s" width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+ <!-- paper / crayon texture: diagonal strokes + grain, drawn once, reused by every card -->
+ <pattern id="hatch" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+  <rect width="18" height="18" fill="none"/><line x1="0" y1="4" x2="18" y2="4" stroke="#fff" stroke-opacity=".28" stroke-width="2"/>
+  <line x1="0" y1="12" x2="18" y2="12" stroke="#000" stroke-opacity=".07" stroke-width="2"/></pattern>
+ <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7"/>
+  <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+ <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".28"/></filter>
+ <filter id="shadowS" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="6" flood-color="#000" flood-opacity=".22"/></filter>
+ <radialGradient id="burst"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+ <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+ <clipPath id="frameClip"><rect x="0" y="0" width="1920" height="1080"/></clipPath>
+</defs>
+<g id="root" clip-path="url(#frameClip)"></g>
+</svg>
+<script>
+// =====================================================================
+//  COUNTDOWN ENGINE — data in, deterministic frames out.
+//  DATA is injected by build_countdown.py from items.json.
+// =====================================================================
+const DATA=__DATA__;
+const W=1920,H=1080;
+const T=Object.assign({ // theme (override any key with "theme" in items.json)
+  bgA:'#8BE36A', bgB:'#F7E25A', border:'#F0385C', rankBg:'#FFB000', rankInk:'#E8101E',
+  money:'#9B59D0', ratings:'#5BD3F5', ink:'#1B1B1B', light:'#FFFFFF', accent:'#FF5F2D',
+  introBg:'#16213E', introInk:'#FFFFFF', track:'#1B1B1B'
+},DATA.theme||{});
+const TIM=Object.assign({intro:5,rank:1.8,item:9,outro:12,fade:.35},DATA.timing||{});
+
+// ---------- helpers ----------
+const E={lin:t=>t,out:t=>1-(1-t)**3,in:t=>t**3,inOut:t=>t<.5?4*t**3:1-(-2*t+2)**3/2,
+ outBack:t=>{const c=1.7;return 1+(c+1)*(t-1)**3+c*(t-1)**2},
+ outElastic:t=>t===0||t===1?t:Math.pow(2,-10*t)*Math.sin((t*10-.75)*(2*Math.PI)/3)+1};
+const cl=v=>Math.min(1,Math.max(0,v));
+const k=(t,a,b,e='inOut')=>E[e](cl((t-a)/(b-a)));
+const lerp=(a,b,p)=>a+(b-a)*p;
+const $=id=>document.getElementById(id);
+const set=(el,o)=>{for(const a in o)el.setAttribute(a,o[a])};
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const money=(v,cur)=>{cur=cur||DATA.currency||'$';if(v==null||v==='')return 'N/A';if(typeof v==='string')return v;
+ if(v>=1e9)return `${cur}${(v/1e9).toFixed(2).replace(/\.?0+$/,'')} billion`;if(v>=1e6)return `${cur}${(v/1e6).toFixed(1).replace(/\.0$/,'')} million`;return `${cur}${Math.round(v).toLocaleString('en-US')}`};
+const fmtNum=(v,dec)=>dec?v.toFixed(dec):Math.round(v).toLocaleString('en-US');
+function wrap(str,max){const out=[];let cur='';for(const w of String(str).split(/\s+/)){if((cur+' '+w).trim().length>max&&cur){out.push(cur);cur=w}else cur=(cur+' '+w).trim()}if(cur)out.push(cur);return out}
+
+// items are given rank 1..N; the video counts down N -> 1 unless DATA.order==='up'
+const MODE=DATA.mode||'countdown'; // 'countdown' = No.N -> No.1 ; 'timeline' = oldest -> newest, year cards instead of ranks
+const ITEMS=[...DATA.items].map((it,i)=>Object.assign({rank:i+1},it)).sort((a,b)=>MODE==='timeline'?((a.year||0)-(b.year||0)):(DATA.order==='up'?a.rank-b.rank:b.rank-a.rank));
+const rankLabel=it=>it.label||(MODE==='timeline'?String(it.year??''):`No.${it.rank}`);
+const N=ITEMS.length;
+
+// ---------- timeline ----------
+const segs=[];let tc=0;
+const push=(kind,dur,extra={})=>{segs.push(Object.assign({kind,start:tc,dur},extra));tc+=dur};
+push('intro',TIM.intro);
+ITEMS.forEach((it,i)=>{push('rank',TIM.rank,{it,i});push('item',it.seconds||TIM.item,{it,i});if(it.clip&&it.clip.file)push('clip',+it.clip.duration||25,{it,i})});
+push('outro',TIM.outro);
+window.DURATION=tc;
+window.TIMELINE=segs.map(s=>({kind:s.kind,start:+s.start.toFixed(3),dur:s.dur,rank:s.it?.rank,title:s.it?.title,year:s.it?.year,label:s.it?rankLabel(s.it):undefined,clip:s.kind==='clip'?s.it.clip:undefined}));
+
+// ---------- builders ----------
+const root=$('root');
+function addLayer(html){const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.innerHTML=html;root.appendChild(g);return g}
+const bgCard=(fill)=>`<rect width="${W}" height="${H}" fill="${fill}"/><rect width="${W}" height="${H}" fill="url(#hatch)"/><rect width="${W}" height="${H}" fill="#000" filter="url(#grain)" opacity=".5"/>`;
+const border=`<rect x="11" y="11" width="${W-22}" height="${H-22}" fill="none" stroke="${T.border}" stroke-width="22" rx="6"/>`;
+
+function posterSVG(p,it,x,y,w,h){
+ const img=it.image?`<image href="${esc(it.image)}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`
+  :`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${T.introBg}"/><text x="${x+w/2}" y="${y+h*.42}" text-anchor="middle" font-size="44" fill="#fff">${wrap(it.title,14).map((l,j)=>`<tspan x="${x+w/2}" dy="${j?52:0}">${esc(l)}</tspan>`).join('')}</text><text x="${x+w/2}" y="${y+h-40}" text-anchor="middle" font-size="30" fill="#ffffff99">${esc(it.year||'')}</text>`;
+ return `<g id="${p}poster" filter="url(#shadow)"><rect x="${x-10}" y="${y-10}" width="${w+20}" height="${h+20}" rx="10" fill="#fff"/>${img}</g>`}
+
+function itemLayer(s){const it=s.it,p='i'+s.i+'_';
+ const bg=s.i%2?T.bgB:T.bgA;
+ // ---- left column: poster + title (poster shrinks when the title needs more lines) ----
+ const tl=wrap(it.title,20);const tsize=tl.length>2?44:tl.length>1?52:62;
+ const PX=170,PW0=420;const PH=Math.min(630,880-110-(tl.length*tsize*1.08+110));const PW=Math.round(PH*2/3),PXc=PX+(PW0-PW)/2,PY=100;
+ let h=bgCard(bg)+posterSVG(p,it,PXc,PY,PW,PH);
+ h+=MODE==='timeline'?`<g id="${p}badge"></g>`:`<g id="${p}badge"><circle r="70" fill="${T.rankBg}" stroke="#fff" stroke-width="8" filter="url(#shadowS)"/><text y="10" text-anchor="middle" font-size="30" fill="${T.ink}">No.</text><text y="58" text-anchor="middle" font-size="54" fill="${T.rankInk}">${it.rank}</text></g>`;
+ const TY=PY+PH+40+tsize;
+ h+=`<g id="${p}title">`+tl.map((l,j)=>`<text x="${PX+PW0/2}" y="${TY+j*tsize*1.08}" text-anchor="middle" font-size="${tsize}" fill="${T.ink}">${esc(l)}</text>`).join('')+
+   `<text x="${PX+PW0/2}" y="${TY+tl.length*tsize*1.08+6}" text-anchor="middle" font-size="46" fill="${T.ink}">${it.year?'('+esc(it.year)+')':''}</text>`+
+   `<text x="${PX+PW0/2}" y="${TY+tl.length*tsize*1.08+56}" text-anchor="middle" font-size="34" fill="${T.ink}" opacity=".8">${esc(it.subtitle||'')}</text></g>`;
+ // ---- right column: measured first, then centred vertically ----
+ const BX=760,BW=1010;const stats=it.stats||[];const maxv=Math.max(1,...stats.map(st=>typeof st.value==='number'?st.value:0));
+ const R=it.ratings||{};const rk=[['imdb','IMDb'],['rt','Rotten Tomatoes'],['rt_audience','Audience'],['metacritic','Metacritic']].filter(([key])=>R[key]!=null);
+ const fl=it.fact?wrap(it.fact,44):[];
+ const MH=stats.length?70+stats.length*132:0, MU=it.multiple&&stats.length?70:0, RH=rk.length?60+Math.ceil(rk.length/2)*140:0, FH=fl.length?80+fl.length*52:0;
+ const parts=[MH+MU,RH,FH].filter(Boolean);const total=parts.reduce((a,b)=>a+b,0)+(parts.length-1)*44;
+ let y=Math.max(70,(H-90-total)/2);const L={};
+ if(stats.length){L.my=y;h+=`<g id="${p}money"><rect x="${BX}" y="${y}" width="${BW}" height="${MH}" rx="28" fill="${T.money}" filter="url(#shadowS)"/><rect x="${BX}" y="${y}" width="${BW}" height="${MH/2}" rx="28" fill="url(#gloss)"/>`+
+  stats.map((st,j)=>{const yy=y+82+j*132;return `<g id="${p}st${j}"><text x="${BX+50}" y="${yy}" font-size="46" fill="#fff">${esc(st.label)}</text><text id="${p}sv${j}" x="${BX+BW-50}" y="${yy}" text-anchor="end" font-size="52" fill="#fff"></text>`+
+   (typeof st.value==='number'?`<rect x="${BX+50}" y="${yy+24}" width="${BW-100}" height="28" rx="14" fill="#000" opacity=".22"/><rect id="${p}sb${j}" x="${BX+50}" y="${yy+24}" height="28" rx="14" fill="${j?'#FFE34D':'#fff'}"/>`:'')+`</g>`}).join('')+`</g>`;
+  if(MU){const mw=String(it.multiple).length*21+70;L.mx=BX+BW-mw/2-20;L.mcy=y+MH+34;
+   h+=`<g id="${p}mult"><rect x="${L.mx-mw/2}" y="${y+MH+4}" width="${mw}" height="62" rx="31" fill="${T.accent}" stroke="#fff" stroke-width="4" filter="url(#shadowS)"/><text x="${L.mx}" y="${y+MH+47}" text-anchor="middle" font-size="36" fill="#fff">${esc(it.multiple)}</text></g>`}
+  y+=MH+MU+44}
+ if(rk.length){h+=`<g id="${p}rat"><rect x="${BX}" y="${y}" width="${BW}" height="${RH}" rx="28" fill="${T.ratings}" filter="url(#shadowS)"/><rect x="${BX}" y="${y}" width="${BW}" height="${RH/2}" rx="28" fill="url(#gloss)"/>`+
+  rk.map(([key,lab],j)=>{const cx=BX+60+(j%2)*490,cy=y+100+Math.floor(j/2)*140;
+   const ring=key!=='imdb';const col=key==='metacritic'?(R[key]>=61?'#2BB24C':R[key]>=40?'#F5C518':'#E8333A'):key.startsWith('rt')?'#E8333A':'#F5C518';
+   return `<g id="${p}r${j}"><text x="${cx+124}" y="${cy-10}" font-size="36" fill="${T.ink}">${lab}</text><text id="${p}rv${j}" x="${cx+124}" y="${cy+44}" font-size="50" fill="${T.ink}"></text>`+
+   (ring?`<circle cx="${cx+48}" cy="${cy+4}" r="44" fill="none" stroke="#000" stroke-opacity=".15" stroke-width="13"/><circle id="${p}rr${j}" cx="${cx+48}" cy="${cy+4}" r="44" fill="none" stroke="${col}" stroke-width="13" stroke-linecap="round" transform="rotate(-90 ${cx+48} ${cy+4})" stroke-dasharray="${2*Math.PI*44}"/>`
+     :`<g transform="translate(${cx+48} ${cy+4})"><path d="M0 -48 L14 -16 L48 -14 L22 8 L29 43 L0 25 L-29 43 L-22 8 L-48 -14 L-14 -16Z" fill="#000" opacity=".15"/><path id="${p}rs${j}" d="M0 -48 L14 -16 L48 -14 L22 8 L29 43 L0 25 L-29 43 L-22 8 L-48 -14 L-14 -16Z" fill="${col}"/></g>`)+`</g>`}).join('')+`</g>`;y+=RH+44}
+ if(fl.length){h+=`<g id="${p}fact"><rect x="${BX}" y="${y}" width="${BW}" height="${FH}" rx="24" fill="#fff" opacity=".94" filter="url(#shadowS)"/><text x="${BX+44}" y="${y+60}" font-size="36" fill="${T.accent}">Did you know?</text>`+fl.map((l,j)=>`<text x="${BX+44}" y="${y+112+j*52}" font-size="38" fill="${T.ink}" font-weight="600">${esc(l)}</text>`).join('')+`</g>`}
+ h+=border;
+ h+=`<g id="${p}track">`+ITEMS.map((x,j)=>`<circle cx="${W/2-(N-1)*22+j*44}" cy="${H-48}" r="${j===s.i?14:9}" fill="${j<s.i?T.track:j===s.i?T.border:'#fff'}" stroke="${T.track}" stroke-width="3" opacity="${j===s.i?1:.75}"/>`).join('')+`</g>`;
+ const g=addLayer(h);g.dataset.p=p;s.L=Object.assign(L,{bx:PXc,by:PY});return g}
+
+function rankLayer(s){const p='k'+s.i+'_';
+ const h=`<rect width="${W}" height="${H}" fill="${T.rankBg}"/><rect width="${W}" height="${H}" fill="url(#hatch)"/>`+
+ `<circle id="${p}burst" cx="${W/2}" cy="${H/2}" r="520" fill="url(#burst)"/>`+
+ `<g id="${p}rays">`+Array.from({length:16},(_,j)=>`<path d="M0 0 L${Math.cos(j*Math.PI/8-.08)*1400} ${Math.sin(j*Math.PI/8-.08)*1400} L${Math.cos(j*Math.PI/8+.08)*1400} ${Math.sin(j*Math.PI/8+.08)*1400}Z" fill="#fff" opacity=".13"/>`).join('')+`</g>`+
+ `<g id="${p}num"><text x="0" y="0" text-anchor="middle" font-size="${rankLabel(s.it).length>5?220:300}" fill="${T.rankInk}" stroke="#fff" stroke-width="14" paint-order="stroke" filter="url(#shadow)">${esc(rankLabel(s.it))}</text></g>`+
+ (s.it.teaser?`<text id="${p}tease" x="${W/2}" y="${H/2+230}" text-anchor="middle" font-size="54" fill="${T.ink}">${esc(s.it.teaser)}</text>`:'')+border;
+ const g=addLayer(h);g.dataset.p=p;return g}
+
+function introLayer(){const tl=wrap(DATA.title||'Top Countdown',22);
+ const h=`<rect width="${W}" height="${H}" fill="${T.introBg}"/><rect width="${W}" height="${H}" fill="url(#hatch)" opacity=".4"/>`+
+ `<g id="in_rays">`+Array.from({length:20},(_,j)=>`<path d="M0 0 L${Math.cos(j*Math.PI/10-.06)*1500} ${Math.sin(j*Math.PI/10-.06)*1500} L${Math.cos(j*Math.PI/10+.06)*1500} ${Math.sin(j*Math.PI/10+.06)*1500}Z" fill="#fff" opacity=".05"/>`).join('')+`</g>`+
+ `<g id="in_badge">${DATA.intro_image?`<image href="${esc(DATA.intro_image)}" x="-260" y="-110" width="520" height="190" preserveAspectRatio="xMidYMid meet"/>`:`<rect x="-210" y="-58" width="420" height="96" rx="48" fill="${T.border}"/><text y="18" text-anchor="middle" font-size="50" fill="#fff">${MODE==='timeline'?'EVOLUTION':'TOP '+N}</text>`}</g>`+
+ tl.map((l,j)=>`<text id="in_t${j}" x="${W/2}" y="${430+j*120}" text-anchor="middle" font-size="104" fill="${T.introInk}">${esc(l)}</text>`).join('')+
+ `<text id="in_sub" x="${W/2}" y="${470+tl.length*120}" text-anchor="middle" font-size="46" fill="#FFE34D">${esc(DATA.subtitle||'')}</text>`+
+ `<g id="in_posters">`+ITEMS.slice(0,7).map((it,j)=>`<g id="in_p${j}">${it.image?`<rect x="-82" y="-122" width="164" height="244" rx="8" fill="#fff"/><image href="${esc(it.image)}" x="-74" y="-114" width="148" height="228" preserveAspectRatio="xMidYMid slice"/>`:`<rect x="-82" y="-122" width="164" height="244" rx="8" fill="#fff" opacity=".15"/>`}</g>`).join('')+`</g>`+
+ (DATA.channel?`<text id="in_ch" x="${W/2}" y="${H-60}" text-anchor="middle" font-size="36" fill="#ffffffaa">${esc(DATA.channel)}</text>`:'')+border;
+ return addLayer(h)}
+
+function outroLayer(){ // leaves clean slots for YouTube end-screen elements (2 videos + subscribe)
+ const h=`<rect width="${W}" height="${H}" fill="${T.border}"/><rect width="${W}" height="${H}" fill="url(#hatch)"/>`+
+ `<text id="ou_t" x="${W/2}" y="150" text-anchor="middle" font-size="76" fill="#fff">${esc(DATA.outro_title||'Which one was your favourite?')}</text>`+
+ `<text id="ou_s" x="${W/2}" y="225" text-anchor="middle" font-size="42" fill="#FFE34D">${esc(DATA.outro_subtitle||'Tell us in the comments!')}</text>`+
+ `<g id="ou_slots"><rect x="180" y="330" width="720" height="405" rx="18" fill="#1B1B1B" stroke="#fff" stroke-width="6"/><rect x="1020" y="330" width="720" height="405" rx="18" fill="#1B1B1B" stroke="#fff" stroke-width="6"/>`+
+ `<text x="540" y="545" text-anchor="middle" font-size="40" fill="#ffffff66">Video</text><text x="1380" y="545" text-anchor="middle" font-size="40" fill="#ffffff66">Video</text></g>`+
+ `<g id="ou_sub"><circle cx="${W/2}" cy="900" r="95" fill="#1B1B1B" stroke="#fff" stroke-width="6"/><text x="${W/2}" y="1030" text-anchor="middle" font-size="40" fill="#fff">Subscribe</text></g>`+border;
+ return addLayer(h)}
+
+// ---------- assemble ----------
+// clip segments render black; the trailer is laid in afterwards by compose_clips.py
+for(const s of segs){s.el=s.kind==='intro'?introLayer():s.kind==='outro'?outroLayer():s.kind==='rank'?rankLayer(s):s.kind==='clip'?addLayer(`<rect width="${W}" height="${H}" fill="#000"/>`):itemLayer(s)}
+
+// ---------- per-frame animation ----------
+const pop=(el,t,a,x,y,d=.5,e='outBack')=>{if(!el)return;const p=k(t,a,a+d,e);el.setAttribute('opacity',cl(p*2.5));el.setAttribute('transform',`translate(${x} ${y}) scale(${Math.max(.001,p)}) translate(${-x} ${-y})`)};
+const slide=(el,t,a,dx,dy,d=.6)=>{if(!el)return;const p=k(t,a,a+d,'outBack');el.setAttribute('opacity',cl(p*2));el.setAttribute('transform',`translate(${dx*(1-p)} ${dy*(1-p)})`)};
+
+function animItem(s,t){const it=s.it,p=s.el.dataset.p,D=s.dur;
+ slide($(p+'poster'),t,.05,-700,0,.7);slide($(p+'title'),t,.45,0,160,.6);
+ const b=$(p+'badge');const bp=k(t,.6,1.1,'outElastic');b.setAttribute('transform',`translate(${s.L.bx} ${s.L.by}) scale(${Math.max(.001,bp)}) rotate(${-12+6*Math.sin(t*2)})`);
+ const stats=it.stats||[];const maxv=Math.max(1,...stats.map(x=>typeof x.value==='number'?x.value:0));
+ slide($(p+'money'),t,.9,700,0,.6);
+ stats.forEach((st,j)=>{const a=1.3+j*.7,pp=k(t,a,a+1.1,'out');const el=$(p+'sv'+j);
+  el.textContent=typeof st.value==='number'?money(st.value*pp,st.currency):(pp>0?st.value:'');
+  const bar=$(p+'sb'+j);if(bar)bar.setAttribute('width',Math.max(0,910*(st.value/maxv)*pp));
+  $(p+'st'+j).setAttribute('opacity',cl(k(t,a-.1,a+.2)*1))});
+ const ma=1.3+stats.length*.7+.6;if(s.L.mx)pop($(p+'mult'),t,ma,s.L.mx,s.L.mcy,.5);
+ const R=it.ratings||{};const rk=['imdb','rt','rt_audience','metacritic'].filter(x=>R[x]!=null);
+ const ra=stats.length?ma+.4:1.2;slide($(p+'rat'),t,ra,700,0,.6);
+ rk.forEach((key,j)=>{const a=ra+.5+j*.35,pp=k(t,a,a+.9,'out');const v=R[key]*pp;
+  const el=$(p+'rv'+j);el.textContent=pp<=0?'':key==='imdb'?`${v.toFixed(1)} / 10`:key==='metacritic'?`${Math.round(v)}`:`${Math.round(v)}%`;
+  $(p+'r'+j).setAttribute('opacity',cl(k(t,a-.1,a+.2)));
+  const ring=$(p+'rr'+j);if(ring){const C=2*Math.PI*42;ring.setAttribute('stroke-dashoffset',C*(1-(key==='metacritic'?v/100:v/100)))}
+  const star=$(p+'rs'+j);if(star){const sc=.3+.7*cl(v/10);star.setAttribute('transform',`scale(${sc})`)}});
+ const fa=ra+.6+rk.length*.35+.6;slide($(p+'fact'),t,fa,0,120,.6);
+ // gentle life: poster float + subtle camera push
+ const pst=$(p+'poster');if(t>.8)pst.setAttribute('transform',`translate(0 ${4*Math.sin(t*1.6)})`);
+ s.el.setAttribute('transform',`translate(${W/2} ${H/2}) scale(${1+.02*k(t,0,D,'lin')}) translate(${-W/2} ${-H/2})`);
+}
+function animRank(s,t){const p=s.el.dataset.p,D=s.dur;
+ const n=$(p+'num');const a=k(t,.05,.55,'outBack');const shake=t>.5&&t<.75?8*Math.sin(t*90):0;
+ n.setAttribute('transform',`translate(${W/2+shake} ${H/2+100}) scale(${lerp(2.4,1,a)}) rotate(${lerp(-14,-4,a)})`);n.setAttribute('opacity',cl(a*3));
+ $(p+'rays').setAttribute('transform',`translate(${W/2} ${H/2}) rotate(${t*25})`);
+ $(p+'burst').setAttribute('r',520+60*Math.sin(t*6));
+ const te=$(p+'tease');if(te)te.setAttribute('opacity',k(t,.6,1));}
+function animIntro(s,t){const D=s.dur;
+ $('in_rays').setAttribute('transform',`translate(${W/2} ${H/2}) rotate(${t*8})`);
+ pop($('in_badge'),t,.15,0,0,.5);$('in_badge').setAttribute('transform',`translate(${W/2} 250) scale(${Math.max(.001,k(t,.15,.65,'outBack'))})`);
+ let j=0;while($('in_t'+j)){const el=$('in_t'+j);const pp=k(t,.4+j*.2,.9+j*.2,'outBack');el.setAttribute('opacity',cl(pp*2));el.setAttribute('transform',`translate(0 ${60*(1-pp)})`);j++}
+ $('in_sub').setAttribute('opacity',k(t,1.2,1.7));
+ ITEMS.slice(0,7).forEach((_,i)=>{const el=$('in_p'+i);const n=Math.min(7,N);const x=W/2+(i-(n-1)/2)*200;const pp=k(t,1.6+i*.12,2.2+i*.12,'outBack');
+  el.setAttribute('transform',`translate(${x} ${910+120*(1-pp)}) rotate(${(i-(n-1)/2)*4}) scale(${.85+.15*pp})`);el.setAttribute('opacity',cl(pp*2))});
+ const ch=$('in_ch');if(ch)ch.setAttribute('opacity',k(t,2,2.5));}
+function animOutro(s,t){pop($('ou_t'),t,.1,W/2,150,.5);$('ou_s').setAttribute('opacity',k(t,.5,1));
+ $('ou_slots').setAttribute('opacity',k(t,.6,1.1));pop($('ou_sub'),t,.9,W/2,900,.5);}
+
+window.seek=TT=>{for(const s of segs){const lt=TT-s.start;const vis=lt>=-1e-4&&lt<s.dur+TIM.fade;s.el.style.display=vis?'':'none';if(!vis)continue;
+  const lt2=Math.max(0,lt);s.el.setAttribute('opacity',s===segs[0]?1:k(lt,0,TIM.fade,'inOut'));
+  if(s.kind==='item')animItem(s,lt2);else if(s.kind==='rank')animRank(s,lt2);else if(s.kind==='intro')animIntro(s,lt2);else if(s.kind==='outro')animOutro(s,lt2)}};
+window.seek(0);
+</script></body></html>
