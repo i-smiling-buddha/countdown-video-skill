@@ -5,7 +5,7 @@
 [![Agent Skills](https://img.shields.io/badge/AGENT-SKILLS-8A2BE2)](https://agentskills.io)
 [![skills.sh](https://skills.sh/b/i-smiling-buddha/countdown-video-skill)](https://skills.sh/i-smiling-buddha/countdown-video-skill)
 
-![Countdown Video Skill](countdown-video-infographic.jpg)
+![Countdown Video Skill infographic](countdown-video-infographic.png)
 
 **Rank anything. Count it down like a pro.**
 
